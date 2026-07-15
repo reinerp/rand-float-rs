@@ -25,6 +25,8 @@ authors.
 | ------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- | -------------------- |
 | `standard`          | folklore                                                                                      | equispaced                                       | the 2⁵³ multiples of 2⁻⁵³ in [0 . . 1)                         | 1                    |
 | `pekkizen`          | [pekkizen's uniFloats](https://github.com/pekkizen/prng/wiki/uniFloats) (`Float64_64`)        | uniform real rounded down to a 2⁻⁶⁴ grid         | every float in [2⁻¹² . . 1); 2⁵² values spaced 2⁻⁶⁴ below 2⁻¹² | 1                    |
+| `pekkizen` (`117`) | [pekkizen's uniFloats](https://github.com/pekkizen/prng/wiki/uniFloats) (`Float64_117`)       | uniform real rounded down to a 2⁻¹¹⁷ grid        | every float in [2⁻⁶⁵ . . 1); multiples of 2⁻¹¹⁷ below 2⁻⁶⁵ | 1 + ≈2⁻¹²            |
+| `pekkizen` (`full`)| [pekkizen's uniFloats](https://github.com/pekkizen/prng/wiki/uniFloats) (`Float64full`)       | uniform real in [0 . . 1) rounded **down** | every float in [0 . . 1), including all subnormals        | 1 + ≈2⁻¹²            |
 | `campbell`          | Taylor R. Campbell's `binary64fast.c`                                                         | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹²⁸ . . 1] and 0                             | 2 (or 3, const-time) |
 | `campbell` (`real`) | Taylor R. Campbell's [`random_real.c`](https://mumble.net/~campbell/2014/04/28/random_real.c) | uniform real in [0 . . 1] rounded **to nearest** | every float in [0 . . 1], including all subnormals             | 1.5 expected         |
 | `badizadegan`       | [fp-rand](https://github.com/specbranch/fp-rand/) (round-down variant)                        | uniform real in (0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²            |
@@ -81,7 +83,7 @@ python/plot_bench.py bench.txt -o bench.pdf`.
 
 ### AMD Ryzen 9 5950X
 
-![AMD Ryzen 9 5950X](img/zen4.jpg)
+![AMD Ryzen 9 5950X](img/Zen4.png)
 
 ### 12th Gen Intel® Core™ i7-12700KF @3.60 GHz
 
@@ -91,6 +93,10 @@ python/plot_bench.py bench.txt -o bench.pdf`.
 
 ![Intel® Xeon® X5660 @2.80 GHz](img/XeonX5660.png)
 
+### Apple M1 Max @2.50 GHz
+
+![Apple M1 Max @2.50 GHz](img/M1.png)
+
 ### Apple M5 Max @4.00 GHz
 
 ![Apple M5 Max @4.00 GHz](img/M5.png)
@@ -98,7 +104,7 @@ python/plot_bench.py bench.txt -o bench.pdf`.
 ## Acnknowledgments
 
 I would like to thank Dima Badizadegan, Taylor C. Campbell, Frédéric Goualard,
-and Reiner Pope for interesting discussions and a lot of useful pointers,
+and Reiner Pope for interesting discussions and a lot of useful pointers.
 
 ## Licensing
 

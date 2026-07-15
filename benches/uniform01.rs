@@ -60,6 +60,8 @@ macro_rules! bench_all {
             standard::f64_53bits(|| r.next_u64())
         });
         $one($g, "pekkizen_64", |r| pekkizen::f64_64(|| r.next_u64()));
+        $one($g, "pekkizen_117", |r| pekkizen::f64_117(|| r.next_u64()));
+        $one($g, "pekkizen_full", |r| pekkizen::f64_full(|| r.next_u64()));
         $one($g, "badizadegan_down", |r| {
             badizadegan::f64_down(|| r.next_u64())
         });
