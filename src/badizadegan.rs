@@ -66,13 +66,39 @@ struct EntropyPool<F> {
     nbits: u32,
 }
 
+/// A do-nothing function that forces the compiler to keep the refill branch
+/// of [`EntropyPool::get_bits`] a branch.
+///
+/// This is a kluge, and it is here for speed only: without a genuine function
+/// call in the refill arm, LLVM if-converts it in bulk-generation loops
+/// (observed both on Apple Silicon and 12th-gen Intel), selecting the next
+/// source state with a conditional move whose condition depends on the
+/// current conversion. That puts the whole conversion — the floating-point
+/// subtraction included — on the loop-carried dependency chain of the source,
+/// ~6× slower than predicting the branch, which after the eager draw in
+/// [`EntropyPool::new`] is taken once per ~2¹² calls. A call cannot be
+/// speculated, so the arm containing it cannot be flattened; branch-weight
+/// hints alone (`std::hint::cold_path`) proved insufficient. The `black_box`
+/// keeps the body from being inferred side-effect-free, which would let the
+/// call — and with it the barrier — be optimized away.
+#[cold]
+#[inline(never)]
+fn refill_barrier() {
+    std::hint::black_box(());
+}
+
 impl<F: FnMut() -> u64> EntropyPool<F> {
     #[inline]
-    fn new(src: F) -> Self {
+    fn new(mut src: F) -> Self {
+        // Draw the first word eagerly: every conversion starts by requesting
+        // more bits than an empty pool holds, so this draw is never wasted,
+        // and it makes the refill in [`get_bits`](Self::get_bits) a genuinely
+        // rare path, as its cold hint promises.
+        let pool = src();
         Self {
             src,
-            pool: 0,
-            nbits: 0,
+            pool,
+            nbits: 64,
         }
     }
 
@@ -83,6 +109,8 @@ impl<F: FnMut() -> u64> EntropyPool<F> {
         let mut result = self.pool;
 
         if self.nbits < n {
+            // Kluge; see [`refill_barrier`].
+            refill_barrier();
             let needed = n - self.nbits;
             self.pool = (self.src)();
             result |= self.pool << self.nbits;

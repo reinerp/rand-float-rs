@@ -91,9 +91,9 @@ python/plot_bench.py bench.txt -o bench.pdf`.
 
 ![Intel® Xeon® X5660 @2.80 GHz](img/XeonX5660.png)
 
-### Apple M1 Max @2.50 GHz
+### Apple M5 Max @4.00 GHz
 
-![Apple M1 Max @2.50 GHz](img/M1.png)
+![Apple M5 Max @4.00 GHz](img/M5.png)
 
 ## Acnknowledgments
 
