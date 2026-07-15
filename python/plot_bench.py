@@ -88,7 +88,9 @@ def plot(order, single, fill, output):
     bars_conv = ax.bar(
         list(x),
         [
-            single[n] - base if base is not None and n != BASELINE and n in single else 0.0
+            single[n] - base
+            if base is not None and n != BASELINE and n in single
+            else 0.0
             for n in order
         ],
         width,
@@ -109,14 +111,13 @@ def plot(order, single, fill, output):
     ax.bar_label(
         bars_conv,
         labels=[
-            f"{r.get_height():.2f}" if r.get_height() != 0.0 else ""
-            for r in bars_conv
+            f"{r.get_height():.2f}" if r.get_height() != 0.0 else "" for r in bars_conv
         ],
         padding=2,
         fontsize=8,
     )
     ax.bar_label(bars_fill, fmt="%.2f", padding=2, fontsize=8)
-    ax.set_title("u64 → f64 in [0, 1): conversion techniques")
+    ax.set_title("u64 → f64 in [0 . . 1): conversion techniques")
     ax.grid(axis="y", alpha=0.3)
     ax.set_axisbelow(True)
     ax.legend(loc="upper left")

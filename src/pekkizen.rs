@@ -1,22 +1,46 @@
+// Derived from the uniFloats wiki of https://github.com/pekkizen/prng
+// (function Float64_64), distributed under the following license:
+//
+// MIT License
+//
+// Copyright (c) 2020 pekkizen <pekkizen@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 //! pekkizen’s leading-zeros technique.
 //!
 //! A Rust port of `Float64_64` from
 //! [pekkizen’s uniFloats wiki](https://github.com/pekkizen/prng/wiki/uniFloats)
 //! (explicit bit-building form). One 64-bit word is interpreted as a
-//! uniform 64-bit fixed-point real in [0, 1): the count of leading zeros
+//! uniform 64-bit fixed-point real in [0 . . 1): the count of leading zeros
 //! picks the binade (a geometric distribution), and the remaining bits are
 //! shifted into the mantissa.
 //!
-//! Every float in [2⁻¹², 1) is reachable — the deepest binade whose floats
-//! are spaced at least 2⁻⁶⁴ apart — and below 2⁻¹² the technique returns
-//! the 2⁵² multiples of 2⁻⁶⁴, i.e. the value is a uniform real rounded down
-//! to the 2⁻⁶⁴ grid. It consumes exactly one word per call and costs only
-//! a couple of operations more than [`standard`](crate::standard) scaling,
-//! delivering about 2¹¹ times as many distinct values.
+//! Every float in [2⁻¹² . . 1) is reachable, and below 2⁻¹² the technique
+//! returns the 2⁵² multiples of 2⁻⁶⁴, that is, the value is a uniform real
+//! rounded down to the 2⁻⁶⁴ grid. It consumes exactly one word per call and
+//! costs only a couple of operations more than [`standard`](crate::standard)
+//! scaling, delivering about 2¹¹ times as many distinct values.
 
 /// Returns a random `f64` distributed as a uniform 64-bit fixed-point real
-/// in [0, 1) rounded down to the nearest representable value: every float
-/// in [2⁻¹², 1), and the 2⁵² multiples of 2⁻⁶⁴ below 2⁻¹².
+/// in [0 . . 1) rounded down to the nearest representable value: every float
+/// in [2⁻¹² . . 1), and the 2⁵² multiples of 2⁻⁶⁴ below 2⁻¹².
 ///
 /// The Go original computes `u << z` with z possibly 64, which Go defines
 /// as 0; Rust declares 64-bit shifts overflow, so the shift is split as

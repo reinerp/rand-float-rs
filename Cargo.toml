@@ -19,3 +19,7 @@ harness = false
 [profile.bench]
 lto = true
 codegen-units = 1
+
+[[bench]]
+name = "probe"
+harness = false

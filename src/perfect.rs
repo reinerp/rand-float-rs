@@ -1,52 +1,42 @@
-//! The “perfect” generator of the fp-rand project, round-down variant.
+// Derived from the fp-rand reference implementations (fp_rand.hpp /
+// fpRand.go), at https://github.com/specbranch/fp-rand/, distributed under
+// the following license:
+//
+// MIT License
+//
+// Copyright (c) 2025 Nima Badizadegan
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+//! Nima Badizadegan's “perfect” generator.
 //!
-//! A Rust port of the round-down variant of the algorithm by the
-//! [fp-rand](https://github.com/specbranch/fp-rand/) project (C++ and Go
-//! reference implementations, plus an accompanying paper by Nima
-//! Badizadegan). This port is validated bit-for-bit against the reference
-//! Go implementation (see `examples/crosscheck.rs`).
+//! A Rust port of the round-down variant of [Nima Badizadegan's
+//! algorithm](https://github.com/specbranch/fp-rand/).
 //!
-//! The functions in this module return a value distributed *exactly* as if
-//! a real number had been drawn uniformly from (0, 1) and then rounded
-//! **down** (toward −∞) to a representable floating-point value. Every
-//! float in [0, 1) — including every subnormal and 0 itself — is returned
-//! with probability equal to the measure of the interval of reals that
-//! rounds down to it. The price is a more complex conversion than
-//! [`standard`](crate::standard)-style scaling, though the expected entropy
-//! cost stays close to one 64-bit word per `f64`.
-//!
-//! # Algorithm
-//!
-//! Generation happens in two stages, fed by an *entropy pool* that buffers
-//! unused bits of each 64-bit draw (so the common case consumes a single
-//! `u64` per `f64`):
-//!
-//! 1. **Seek.** Draw *p* mantissa bits (p = 52 for `f64`). While they are
-//!    all zero — probability 2⁻⁵² — descend one *p*-binade-wide window and
-//!    redraw, until the window at the bottom of the exponent range is
-//!    reached (there, only `EBIAS mod p` bits are drawn, aligned at the
-//!    top). The bits are then placed in the current window by adding them,
-//!    as an integer, to the IEEE 754 representation of the window base and
-//!    subtracting the base *in floating point*: the difference `b` is the
-//!    partial result, and comparing exponent fields before and after the
-//!    subtraction reveals how many low-order significand bits `nb` were left
-//!    vacant by renormalization.
-//! 2. **Finalize (round-down).** Backfill the `nb` vacant trailing bits with
-//!    fresh random bits, by integer-adding them to the representation of `b`.
-//!
-//! Step 1 gives the result’s magnitude the correct geometric distribution;
-//! step 2 fills the gaps so that *every* representable value in the
-//! result’s binade is reachable with the correct probability.
-//!
-//! # Entropy sources
-//!
-//! The generators take any `FnMut() -> u64` producing independent uniform
-//! 64-bit words. Leftover bits are pooled only *within* one call, never
-//! across calls (following the Go reference implementation), so calls are
-//! stateless with respect to each other.
+//! The functions in this module return a value distributed exactly as if a real
+//! number had been drawn uniformly from (0 . . 1) and then rounded down (toward
+//! −∞) to a representable floating-point value. Every float in [0 . . 1),
+//! including every subnormal and 0 itself, is returned with probability equal
+//! to the measure of the interval of reals that rounds down to it.
 //!
 //! ```
-//! let mut src = rand_float_rs::sources::SplitMix64(42);
+//! let mut src = rand_float_rs::sources::Weyl(42);
 //!
 //! let x = rand_float_rs::perfect::f64_down(|| src.next_u64());
 //! assert!((0.0..1.0).contains(&x));
@@ -167,10 +157,10 @@ fn seek32<F: FnMut() -> u64>(pool: &mut EntropyPool<F>) -> (u32, u32) {
     (b.to_bits(), nb)
 }
 
-/// Returns a random `f64` distributed as a uniform real in (0, 1) rounded
+/// Returns a random `f64` distributed as a uniform real in (0 . . 1) rounded
 /// **down** (toward −∞) to the nearest representable value.
 ///
-/// The result lies in [0, 1); every `f64` in that range, including every
+/// The result lies in [0 . . 1); every `f64` in that range, including every
 /// subnormal and 0, is returned with probability equal to the measure of
 /// the reals that round down to it. See the [module documentation](self)
 /// for the algorithm.
@@ -183,7 +173,8 @@ fn seek32<F: FnMut() -> u64>(pool: &mut EntropyPool<F>) -> (u32, u32) {
 /// reference:
 ///
 /// ```
-/// let mut src = rand_float_rs::sources::SplitMix64(1);
+/// // A Weyl sequence: statistically very poor, for illustration only.
+/// let mut src = rand_float_rs::sources::Weyl(1);
 /// let mut next = || src.next_u64();
 /// let x = rand_float_rs::perfect::f64_down(&mut next);
 /// let y = rand_float_rs::perfect::f64_down(&mut next);
@@ -198,10 +189,10 @@ pub fn f64_down(bits: impl FnMut() -> u64) -> f64 {
     f64::from_bits(pool.get_bits(nb) + partial)
 }
 
-/// Returns a random `f32` distributed as a uniform real in (0, 1) rounded
+/// Returns a random `f32` distributed as a uniform real in (0 . . 1) rounded
 /// **down** (toward −∞) to the nearest representable value.
 ///
-/// The `f32` counterpart of [`f64_down`]; the result lies in [0, 1) and
+/// The `f32` counterpart of [`f64_down`]; the result lies in [0 . . 1) and
 /// every `f32` in that range is reachable, including subnormals and 0.
 #[inline]
 pub fn f32_down(bits: impl FnMut() -> u64) -> f32 {
@@ -213,7 +204,7 @@ pub fn f32_down(bits: impl FnMut() -> u64) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sources::SplitMix64;
+    use crate::sources::Weyl;
 
     /// A source that replays a fixed sequence of words, then panics.
     fn replay(words: &[u64]) -> impl FnMut() -> u64 + '_ {
@@ -242,7 +233,10 @@ mod tests {
         );
         // Mantissa 1: partial 2^-52, 52 vacant bits backfilled from the 12
         // leftover bits plus 40 bits of a second word.
-        assert_eq!(f64_down(replay(&[1, 0])), f64::from_bits(0x3CB0000000000000));
+        assert_eq!(
+            f64_down(replay(&[1, 0])),
+            f64::from_bits(0x3CB0000000000000)
+        );
     }
 
     #[test]
@@ -271,7 +265,7 @@ mod tests {
 
     #[test]
     fn range_and_moments_f64() {
-        let mut src = SplitMix64(0xDEADBEEF);
+        let mut src = Weyl(0xDEADBEEF);
         let n = 1_000_000;
         let mut sum = 0.0;
         let mut top_binade = 0u32;
@@ -293,7 +287,7 @@ mod tests {
 
     #[test]
     fn range_and_moments_f32() {
-        let mut src = SplitMix64(0xC0FFEE);
+        let mut src = Weyl(0xC0FFEE);
         let n = 1_000_000;
         let mut sum = 0.0f64;
         for _ in 0..n {
@@ -308,7 +302,7 @@ mod tests {
     #[test]
     fn low_binades_are_reachable_and_correctly_distributed() {
         // With 10^6 samples, P(x < 2^-10) should be ~2^-10 (~977 hits).
-        let mut src = SplitMix64(42);
+        let mut src = Weyl(42);
         let n = 1_000_000;
         let threshold = 1.0 / 1024.0;
         let mut hits = 0u32;
