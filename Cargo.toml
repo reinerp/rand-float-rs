@@ -1,0 +1,21 @@
+[package]
+name = "perfect-fp-rs"
+version = "0.1.0"
+edition = "2024"
+description = "Perfect uniform floating-point random number generation (round-down): a Rust port of the fp-rand algorithm"
+license = "Apache-2.0 OR MIT"
+keywords = ["random", "float", "uniform", "prng"]
+
+[dependencies]
+
+[dev-dependencies]
+criterion = "0.8.2"
+
+[[bench]]
+name = "uniform01"
+harness = false
+
+# Best inlining and stable measurements for the benchmarks.
+[profile.bench]
+lto = true
+codegen-units = 1
