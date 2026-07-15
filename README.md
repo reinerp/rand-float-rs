@@ -1,54 +1,47 @@
-# perfect-fp-rs
+# rand-float-rs
 
-Perfect uniform floating-point random number generation for Rust: a port of
-the *round-down* variant of the [fp-rand](https://github.com/specbranch/fp-rand/)
-algorithm (C++/Go reference implementations and paper).
+A comparison of techniques for generating uniform random floating-point
+numbers in [0, 1) from a stream of random bits.
 
-`f64_down` (and its `f32_down` counterpart) returns a value distributed
-exactly as if a real number had been drawn uniformly from (0, 1) and then
-rounded down (toward −∞) to a representable floating-point value. The result
-lies in [0, 1), and *every* float in that range — including every subnormal
-and 0 — is returned with probability equal to the measure of the reals that
-round down to it. This is a strict upgrade over the usual
-`(bits >> 11) * 2⁻⁵³` technique, which can only produce 2⁵³ equally spaced
-values.
+Every technique is implemented as a pure transformation of a source of
+uniform random 64-bit words (any `FnMut() -> u64`), documented with its
+exact output distribution, and benchmarked against the others. No technique
+is preferred: they make different tradeoffs between speed, entropy
+consumption, and which floating-point values they can produce.
 
-The generator is a pure transformation of a stream of uniform 64-bit words:
-it takes any `FnMut() -> u64` and, thanks to an internal entropy pool that
-recycles leftover bits, consumes a single word per `f64` except with
-probability ≈ 2⁻¹².
+| Module | Origin | Distribution | Reachable values | Words per `f64` |
+|--------|--------|--------------|------------------|-----------------|
+| `standard` | folklore | equispaced lattice | the 2⁵³ multiples of 2⁻⁵³ in [0, 1) | 1 |
+| `pekkizen` | [pekkizen's uniFloats](https://github.com/pekkizen/prng/wiki/uniFloats) (`Float64_64`) | uniform real rounded down to a 2⁻⁶⁴ grid | every float in [2⁻¹², 1); 2⁵² values spaced 2⁻⁶⁴ below 2⁻¹² | 1 |
+| `campbell` | Taylor R. Campbell's `binary64fast.c` | uniform real in [0, 1] rounded **to nearest** | every float in [2⁻¹²⁸, 1] and 0 | 2 (or 3, const-time) |
+| `perfect` | [fp-rand](https://github.com/specbranch/fp-rand/) (round-down variant) | uniform real in (0, 1) rounded **down** | every float in [0, 1), including all subnormals | 1 + ≈2⁻¹² |
+
+Notes on the ports:
+
+- `perfect` is validated bit-for-bit against the reference Go implementation
+  (see `examples/crosscheck.rs`); `f32` generation is also provided.
+- In `campbell`, the `(t - 1) * 0x1p-64` rescaling of the const-time
+  variants is computed in signed arithmetic, so that it is correct and
+  branch-free on pre-AVX-512 x86, where the unsigned integer→double
+  conversion is branchy.
+- `pekkizen` uses the explicit bit-building form, validated against the
+  wiki's division form.
 
 ```rust
-let mut state = 0x9E3779B97F4A7C15u64;
-let mut next = move || {
-    // SplitMix64
-    state = state.wrapping_add(0x9E3779B97F4A7C15);
-    let mut z = state;
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
-    z ^ (z >> 31)
-};
+use rand_float_rs::{campbell, pekkizen, perfect, standard, sources::SplitMix64};
 
-let x = perfect_fp_rs::f64_down(&mut next);
-assert!((0.0..1.0).contains(&x));
+let mut src = SplitMix64(42);
+let a = standard::f64_53bits(|| src.next_u64());
+let b = pekkizen::f64_64(|| src.next_u64());
+let c = campbell::fast(|| src.next_u64());
+let d = perfect::f64_down(|| src.next_u64());
 ```
-
-The port is validated bit-for-bit against the reference Go implementation
-(see `examples/crosscheck.rs`).
 
 ## Benchmarks
 
-`cargo bench` compares the conversion speed of this crate against:
-
-- Taylor R. Campbell's `uniformbinary64_fast` and its two constant-time
-  variants (`binary64fast.c`), which produce correctly rounded
-  (to-nearest) uniform doubles — with the `(t - 1) * 0x1p-64` rescaling
-  computed in signed arithmetic to avoid a branchy unsigned
-  integer→double conversion on older x86;
-- the standard `(bits >> 11) * 2⁻⁵³` technique;
-- the leading-zeros technique from
-  [pekkizen's uniFloats](https://github.com/pekkizen/prng/wiki/uniFloats)
-  (`Float64_64`), which covers every float in [2⁻¹², 1).
-
-All contenders are fed by the same Weyl-sequence generator used by the
-benchmark harness of `binary64fast.c`.
+`cargo bench` drives every technique with the same Weyl-sequence source
+(the one used by the benchmark harness of `binary64fast.c`, whose baseline
+cost is measured separately) in two settings: one conversion per call, and
+filling an array of 1024 doubles per iteration. `contrib/x86-bench.sh`
+additionally runs, pinned to a single CPU, the Go benchmarks of the fp-rand
+repository together with a corrected version of their baseline.
