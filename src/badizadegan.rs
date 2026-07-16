@@ -36,11 +36,11 @@
 //! to the measure of the interval of reals that rounds down to it.
 //!
 //! ```
-//! let mut src = rand_float_rs::sources::Weyl(42);
+//! let mut src = rand_float::sources::Weyl(42);
 //!
-//! let x = rand_float_rs::badizadegan::f64_down(|| src.next_u64());
+//! let x = rand_float::badizadegan::f64_down(|| src.next_u64());
 //! assert!((0.0..1.0).contains(&x));
-//! let y = rand_float_rs::badizadegan::f32_down(|| src.next_u64());
+//! let y = rand_float::badizadegan::f32_down(|| src.next_u64());
 //! assert!((0.0..1.0).contains(&y));
 //! ```
 
@@ -181,10 +181,10 @@ fn seek32<F: FnMut() -> u64>(pool: &mut EntropyPool<F>) -> (u32, u32) {
 ///
 /// ```
 /// // A Weyl sequence: statistically very poor, for illustration only.
-/// let mut src = rand_float_rs::sources::Weyl(1);
+/// let mut src = rand_float::sources::Weyl(1);
 /// let mut next = || src.next_u64();
-/// let x = rand_float_rs::badizadegan::f64_down(&mut next);
-/// let y = rand_float_rs::badizadegan::f64_down(&mut next);
+/// let x = rand_float::badizadegan::f64_down(&mut next);
+/// let y = rand_float::badizadegan::f64_down(&mut next);
 /// assert!(x != y);
 /// ```
 #[inline]

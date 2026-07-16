@@ -10,7 +10,7 @@
 use criterion::{
     BenchmarkGroup, Criterion, Throughput, criterion_group, criterion_main, measurement::WallTime,
 };
-use rand_float_rs::{badizadegan, campbell, pekkizen, sources::Weyl, standard};
+use rand_float::{badizadegan, campbell, pekkizen, sources::Weyl, standard};
 
 const SEED: u64 = 0x0123_4567_89AB_CDEF;
 const FILL: usize = 1024;

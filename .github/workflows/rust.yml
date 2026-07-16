@@ -1,0 +1,76 @@
+name: Rust
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check formatting
+        run: cargo fmt -- --check
+      - name: Clippy
+        run: cargo clippy --all-features --all-targets -- -D warnings
+      - name: Docs
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --all-features --document-private-items
+
+  msrv:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Install rust (1.85.0)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.85.0
+      - uses: actions/checkout@v6
+      # Library only: the dev-dependencies (criterion) require a newer
+      # compiler, so tests and benches are covered by the test matrix.
+      - name: Build the library under the MSRV
+        run: cargo build --verbose
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - name: Install rust (${{ matrix.rust }})
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+      - uses: actions/checkout@v6
+      - name: Build (all targets)
+        run: cargo build --all-targets --verbose
+      - name: Run tests
+        run: cargo test --verbose
+
+  # The vscalefsd (hardware ldexp) path of campbell::real is compiled only
+  # under target-feature=+avx512f: always build it, and run the test suite
+  # against it when the runner's CPU has AVX-512.
+  test-avx512:
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      RUSTFLAGS: -C target-feature=+avx512f
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build with AVX-512F
+        run: cargo build --all-targets --verbose
+      - name: Run tests with AVX-512F (only on a capable runner)
+        run: |
+          if grep -q avx512f /proc/cpuinfo; then
+            cargo test --verbose
+          else
+            echo "Runner CPU lacks AVX-512F; build-only check."
+          fi

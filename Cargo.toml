@@ -1,12 +1,12 @@
 [package]
 name = "rand-float"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "A comparison of techniques for generating uniform random floating-point numbers in the unit interval from streams of random bits"
 license = "(Apache-2.0 OR MIT) AND BSD-2-Clause AND MIT"
 keywords = ["random", "float", "uniform", "prng"]
 repository = "https://github.com/vigna/rand-float-rs"
-documentation = "https://docs.rs/rand-float-rs"
+documentation = "https://docs.rs/rand-float"
 rust-version = "1.85"
 
 [dependencies]

@@ -159,7 +159,41 @@ pub fn consttime(mut bits: impl FnMut() -> u64) -> f64 {
 
 /// 2⁻⁹⁶⁰, the exact first stage of the two-step scaling that replaces
 /// the C original's `ldexp`.
+#[cfg(not(all(target_arch = "x86_64", target_feature = "avx512f")))]
 const TWO_M960: f64 = f64::from_bits((1023 - 960) << 52);
+
+/// `ldexp(significand as f64, exponent)` for the tail of [`real`]:
+/// AVX-512F provides `ldexp` in hardware (`vscalefsd`, x·2^⌊e⌋ with a
+/// single rounding, subnormals included), so a single instruction
+/// replaces the two-multiplication sequence of the portable version
+/// below, with bit-for-bit identical results.
+#[cfg(all(target_arch = "x86_64", target_feature = "avx512f"))]
+#[inline(always)]
+fn ldexp_sig(significand: u64, exponent: i32) -> f64 {
+    let x = significand as f64; // vcvtusi2sd: single instruction on AVX-512
+    let e = exponent as f64; // exact, and off the critical path
+    let r: f64;
+    // SAFETY: pure register-to-register scalar arithmetic; the cfg above
+    // guarantees the instruction set.
+    unsafe {
+        core::arch::asm!(
+            "vscalefsd {r}, {x}, {e}",
+            r = lateout(xmm_reg) r,
+            x = in(xmm_reg) x,
+            e = in(xmm_reg) e,
+            options(pure, nomem, nostack),
+        );
+    }
+    r
+}
+
+/// `ldexp(significand as f64, exponent)` in two multiplications: the
+/// first is exact, the second rounds (to a subnormal, possibly).
+#[cfg(not(all(target_arch = "x86_64", target_feature = "avx512f")))]
+#[inline(always)]
+fn ldexp_sig(significand: u64, exponent: i32) -> f64 {
+    significand as f64 * TWO_M960 * f64::from_bits(((1023 + 960 + exponent) as u64) << 52)
+}
 
 /// Port of `random_real` from `random_real.c`: interprets an unbounded
 /// stream of random bits as the binary expansion of a real number in
@@ -187,7 +221,9 @@ const TWO_M960: f64 = f64::from_bits((1023 - 960) << 52);
 /// representable. The port multiplies by 2⁻⁹⁶⁰ first (exact, since the
 /// intermediate result stays normal) and then by 2^(exponent + 960),
 /// which is always representable, so the result is rounded once, exactly
-/// as in `ldexp`.
+/// as in `ldexp`. On x86-64 compiled with AVX-512F the port uses instead
+/// the hardware `ldexp` (a single `vscalefsd` instruction) via inline
+/// assembly, with bit-for-bit identical results.
 #[inline(always)]
 pub fn real(mut bits: impl FnMut() -> u64) -> f64 {
     let mut exponent = -64i32;
@@ -222,9 +258,7 @@ pub fn real(mut bits: impl FnMut() -> u64) -> f64 {
     // almost surely, a further 1 would break it.
     significand |= 1;
 
-    // ldexp(significand as f64, exponent), in two multiplications: the
-    // first is exact, the second rounds (to a subnormal, possibly).
-    significand as f64 * TWO_M960 * f64::from_bits(((1023 + 960 + exponent) as u64) << 52)
+    ldexp_sig(significand, exponent)
 }
 
 #[cfg(test)]

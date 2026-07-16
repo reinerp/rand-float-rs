@@ -1,4 +1,4 @@
-# rand-float-rs
+# rand-float
 
 This crate implements several techniques for generating uniform random
 floating-point numbers in [0 . . 1) from a stream of random bits.
@@ -52,7 +52,7 @@ A few observations:
 ## Examples
 
 ```rust
-use rand_float_rs::{badizadegan, campbell, pekkizen, standard};
+use rand_float::{badizadegan, campbell, pekkizen, standard};
 
 struct Xoroshiro128pp([u64; 2]);
 
@@ -105,7 +105,7 @@ python/plot_bench.py bench.txt -o bench.pdf`.
 
 Here we display the results of the benchmarks on some architectures. Note that
 because of a quirk in LLVM, we had to add (at least for the time being) a [cold
-barrier](https://docs.rs/rand-float/latest/rand-float/cold) preventing some
+barrier](https://docs.rs/rand-float/latest/rand_float/cold/) preventing some
 un-optimization of the array case due to interference with the underlying Weyl
 generator. The barrier sometimes however disturbs a bit the single-call case. We
 hope to remove it in the future.
