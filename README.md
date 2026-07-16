@@ -140,9 +140,9 @@ let d = badizadegan::f64_down(|| src.next_u64());
 
 ## Benchmarks
 
-`cargo bench` drives every technique with the same [`Weyl`]-sequence source in two
-settings: one conversion per call, and filling an array of 1024 doubles per
-iteration.
+`cargo bench` drives every technique with the same [`Weyl`]-sequence source in
+three settings: one conversion per call, filling an array of 1024 doubles per
+iteration, and summing 1024 doubles.
 All builds use `-C target-cpu=native` (set in `.cargo/config.toml`), so the
 benchmarks measure code generated for the machine they run on.
 

@@ -5,7 +5,9 @@
 //! Two groups are measured: `per_call` times one conversion, and
 //! `fill_1024` fills an array of 1024 doubles per iteration (throughput
 //! is reported per element), which leaves the optimizer free to overlap
-//! consecutive conversions the way a bulk-generation loop would.
+//! consecutive conversions the way a bulk-generation loop would. `sum_1024`
+//! generates and sums 1024 doubles, forcing the generated floats into
+//! floating point registers in the way numeric code would.
 
 use criterion::{
     BenchmarkGroup, Criterion, Throughput, criterion_group, criterion_main, measurement::WallTime,
@@ -42,6 +44,30 @@ fn bench_fill(g: &mut BenchmarkGroup<WallTime>, name: &str, mut f: impl FnMut(&m
             }
             rng.0 = local.0;
             std::hint::black_box(&buf);
+        })
+    });
+}
+
+fn bench_sum(g: &mut BenchmarkGroup<WallTime>, name: &str, mut f: impl FnMut(&mut Weyl) -> f64) {
+    g.bench_function(name, move |b| {
+        let mut rng = Weyl(SEED);
+        b.iter(|| {
+            // f64 adding has a multiple-cycle latency on many CPUs, which is
+            // longer than the latency of the Weyl RNG. We unroll the loop 4x
+            // to allow the CPU to overlap 4 of the generations.
+            let mut local = Weyl(rng.0);
+            let mut sum0 = 0.0;
+            let mut sum1 = 0.0;
+            let mut sum2 = 0.0;
+            let mut sum3 = 0.0;
+            for _ in 0..FILL / 4 {
+                sum0 += f(&mut local);
+                sum1 += f(&mut local);
+                sum2 += f(&mut local);
+                sum3 += f(&mut local);
+            }
+            rng.0 = local.0;
+            std::hint::black_box((sum0, sum1, sum2, sum3));
         })
     });
 }
@@ -88,6 +114,13 @@ fn bench(c: &mut Criterion) {
     g.measurement_time(std::time::Duration::from_secs(3));
     g.throughput(Throughput::Elements(FILL as u64));
     bench_all!(&mut g, bench_fill);
+    g.finish();
+
+    let mut g = c.benchmark_group("sum_1024");
+    g.warm_up_time(std::time::Duration::from_secs(1));
+    g.measurement_time(std::time::Duration::from_secs(3));
+    g.throughput(Throughput::Elements(FILL as u64));
+    bench_all!(&mut g, bench_sum);
     g.finish();
 }
 

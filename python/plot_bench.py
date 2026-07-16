@@ -7,9 +7,9 @@ per generated f64 (lower is better): the time per call of the `per_call` group,
 the same minus the bare-source baseline (i.e. the cost of the conversion alone,
 which is meaningful in the serial single-call setting, where source and
 conversion costs compose roughly additively), and the per-element time of the
-`fill_1024` group (not baseline-subtracted: in a vectorized fill loop the source
-is fused with the conversion, so the standalone baseline is not a valid
-subtrahend).
+the `fill_1024` and `sum_1024` groups (not baseline-subtracted: in vectorized
+loops the source is fused with the conversion, so the standalone baseline is
+not a valid subtrahend).
 
 Typical use:
 
@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 TIME_TO_NS = {"ps": 1e-3, "ns": 1.0, "µs": 1e3, "us": 1e3, "ms": 1e6}
 THRPT_TO_NS_PER_ELEM = {"Kelem/s": 1e6, "Melem/s": 1e3, "Gelem/s": 1.0}
 
-BENCH_RE = re.compile(r"\b(per_call|fill_1024)/(\S+)")
+BENCH_RE = re.compile(r"\b(per_call|fill_1024|sum_1024)/(\S+)")
 TIME_RE = re.compile(
     r"time:\s*\[\s*[\d.]+\s+\S+\s+([\d.]+)\s+(\S+)\s+[\d.]+\s+\S+\s*\]"
 )
@@ -38,10 +38,9 @@ THRPT_RE = re.compile(
 
 
 def parse(text):
-    """Returns (order, single, fill): the technique names in order of first
-    appearance, the per_call point estimates in ns, and the fill_1024 point
-    estimates in ns per element."""
-    order, single, fill = [], {}, {}
+    """Returns (order, single, fill, sum): the technique names in order of first
+    appearance and each group's point estimates in ns per element."""
+    order, single, fill, sum_ = [], {}, {}, {}
     current = None
 
     for line in text.splitlines():
@@ -62,21 +61,23 @@ def parse(text):
         if m and group == "fill_1024" and name not in fill:
             # Throughput per element, inverted into ns per element.
             fill[name] = THRPT_TO_NS_PER_ELEM[m.group(2)] / float(m.group(1))
-    order = [n for n in order if n in single or n in fill]
-    return order, single, fill
+        if m and group == "sum_1024" and name not in sum_:
+            sum_[name] = THRPT_TO_NS_PER_ELEM[m.group(2)] / float(m.group(1))
+    order = [n for n in order if n in single or n in fill or n in sum_]
+    return order, single, fill, sum_
 
 
 BASELINE = "weyl_baseline"
 
 
-def plot(order, single, fill, output):
+def plot(order, single, fill, sum_, output):
     x = range(len(order))
-    width = 0.26
+    width = 0.2
 
     fig, ax = plt.subplots(figsize=(2.0 * len(order) + 2, 5.5))
 
     bars_single = ax.bar(
-        [i - width for i in x],
+        [i - 1.5 * width for i in x],
         [single.get(n, 0.0) for n in order],
         width,
         color="tab:blue",
@@ -86,7 +87,7 @@ def plot(order, single, fill, output):
     # (omitted for the baseline itself, and when no baseline was measured).
     base = single.get(BASELINE)
     bars_conv = ax.bar(
-        list(x),
+        [i - 0.5 * width for i in x],
         [
             single[n] - base
             if base is not None and n != BASELINE and n in single
@@ -98,11 +99,18 @@ def plot(order, single, fill, output):
         label="single call − baseline (conversion only)",
     )
     bars_fill = ax.bar(
-        [i + width for i in x],
+        [i + 0.5 * width for i in x],
         [fill.get(n, 0.0) for n in order],
         width,
         color="tab:orange",
         label="fill of a 1024-element array",
+    )
+    bars_sum = ax.bar(
+        [i + 1.5 * width for i in x],
+        [sum_.get(n, 0.0) for n in order],
+        width,
+        color="tab:red",
+        label="sum of 1024 generated values",
     )
 
     ax.set_ylabel("ns per generated f64 (lower is better)")
@@ -117,6 +125,7 @@ def plot(order, single, fill, output):
         fontsize=8,
     )
     ax.bar_label(bars_fill, fmt="%.2f", padding=2, fontsize=8)
+    ax.bar_label(bars_sum, fmt="%.2f", padding=2, fontsize=8)
     ax.set_title("u64 → f64 in [0 . . 1): conversion techniques")
     ax.grid(axis="y", alpha=0.3)
     ax.set_axisbelow(True)
@@ -144,10 +153,10 @@ def main():
     args = p.parse_args()
 
     text = open(args.input).read() if args.input else sys.stdin.read()
-    order, single, fill = parse(text)
+    order, single, fill, sum_ = parse(text)
     if not order:
         sys.exit("no benchmark results found in input")
-    plot(order, single, fill, args.output)
+    plot(order, single, fill, sum_, args.output)
 
 
 if __name__ == "__main__":
