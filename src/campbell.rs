@@ -106,8 +106,8 @@ pub fn fast(mut bits: impl FnMut() -> u64) -> f64 {
 
 /// Shared tail of the const-time variants: given the flag t ∈ {0, 1}
 /// (t = 1 iff m ≠ 0), rescale `f` and substitute `m2` for a zero `m`,
-/// both branch-free. See the [module documentation](self) for the
-/// signed-arithmetic form of the rescaling.
+/// both branch-free. The rescaling is in signed arithmetic, fixing a bug
+/// of the original C.
 #[inline(always)]
 const fn consttime_tail(t: u64, u: u64, m: u64, m2: u64) -> f64 {
     let mut f = TWO_M64;
@@ -117,7 +117,7 @@ const fn consttime_tail(t: u64, u: u64, m: u64, m2: u64) -> f64 {
     fastdet(f, m, u)
 }
 
-/// Port of `uniformbinary64_consttime_if`: like [`fast`], but the zero-`m`
+/// Modified port of `uniformbinary64_consttime`: like [`fast`], but the zero-`m`
 /// event is branchless, with the flag computed as `m != 0`.
 ///
 /// This is a small variant of mine: it relies on the compiler turning the
