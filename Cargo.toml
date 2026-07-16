@@ -1,8 +1,8 @@
 [package]
 name = "rand-float"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
-description = "A comparison of techniques for generating uniform random floating-point numbers in the unit interval from streams of random bits"
+description = "Techniques for converting streams of random bits into floating-point numbers distributed as a uniform real in the unit interval"
 license = "(Apache-2.0 OR MIT) AND BSD-2-Clause AND MIT"
 keywords = ["random", "float", "uniform", "prng"]
 repository = "https://github.com/vigna/rand-float-rs"
@@ -10,9 +10,19 @@ documentation = "https://docs.rs/rand-float"
 rust-version = "1.85"
 
 [dependencies]
+rand_core = { version = "0.10", default-features = false, optional = true }
+
+[features]
+default = ["rand"]
+# Enables uniform::Unif01Ext, integrating with the rand crate.
+rand = ["dep:rand_core"]
 
 [dev-dependencies]
 criterion = "0.8.2"
+rand = "0.10"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [[bench]]
 name = "uniform01"

@@ -28,9 +28,8 @@
 //! Taylor R. Campbell’s correctly rounded uniform doubles.
 //!
 //! A Rust port of `binary64fast.c` (Campbell, 2014–2026) and of the
-//! `random_real` function of
-//! [`random_real.c`](https://mumble.net/~campbell/2014/04/28/random_real.c)
-//! (Campbell, 2014). These functions return an `f64` distributed as a uniform
+//! `random_real` function of [`random_real.c`] (Campbell, 2014). These
+//! functions return an `f64` distributed as a uniform
 //! real in [0 . . 1] correctly rounded to nearest. The `binary64fast.c`
 //! functions ([`fast`] and the const-time variants) stop after two exponent
 //! words, so they reach every float in [2⁻¹²⁸ . . 1], each with
@@ -52,6 +51,8 @@
 //! might find a signed where an unsigned integer-to-double conversion
 //! instruction was present: Taylor fixed the code after I reported the
 //! possibility of a branchy unsigned conversion on pre-AVX-512 x86.
+//!
+//! [`random_real.c`]: https://mumble.net/~campbell/2014/04/28/random_real.c
 
 /// 2⁻⁶⁴ (Rust has no hex float literals; built via the exponent field).
 const TWO_M64: f64 = f64::from_bits((1023 - 64) << 52);

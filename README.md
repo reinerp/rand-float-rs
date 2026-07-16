@@ -1,11 +1,41 @@
 # rand-float
 
-This crate implements several techniques for generating uniform random
-floating-point numbers in [0 . . 1) from a stream of random bits.
+This crate implements several techniques for converting streams of random bits
+into floating-point numbers distributed as a uniform real in the unit interval.
 
-A [relatively innocuous pull
-request](https://github.com/smol-rs/fastrand/pull/129) ended up in a rabbit hole
-that led to this crate. The motivation was the state of disarray of the
+The standard technique of extracting 53 bits and dividing by 2⁵³, used, for
+example, by the [`rand`] crate, provides 2⁵³
+equispaced floating-point numbers, but cannot generate almost all the
+floating-point numbers in the unit interval. The techniques in this crate will
+generate correctly all floating-point numbers in the unit interval, including
+subnormals, with a probability proportional to the space around them.
+
+## How to use
+
+The [`uniform`] module exposes the technique of choice (an alias for the
+[`pekkizen`] module described below). Its [`unif_01`] function turns any
+source of random 64-bit words into a uniform `f64` in [0 . . 1); with the
+`rand` feature, enabled by default, the [`Unif01Ext`] extension trait
+provides the same conversion as a [`unif_01`][method] method on every
+generator of the [`rand`] crate:
+
+```rust
+use rand_float::uniform::Unif01Ext;
+
+// With any generator of the rand crate:
+let x = rand::rng().unif_01();
+assert!((0.0..1.0).contains(&x));
+
+// With any source of random 64-bit words:
+let mut src = rand_float::sources::Weyl(42);
+let y = rand_float::uniform::unif_01(|| src.next_u64());
+assert!((0.0..1.0).contains(&y));
+```
+
+## Motivation
+
+A [relatively innocuous pull request] ended up in a rabbit hole that led
+to this crate. The motivation was the state of disarray of the
 literature on the topic: academic papers, GitHub repositories, and free-floating
 sources, often lacking comparison with other approaches, a few bugs, and in some
 cases definitely hostile notation. By gathering all techniques in the same
@@ -23,13 +53,13 @@ reported to the authors.
 
 | Module        | Origin                                                                                         | Distribution                                     | Reachable values                                               | Words per `f64`             |
 | ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- | --------------------------- |
-| `standard`    | folklore                                                                                       | equispaced                                       | the 2⁵³ multiples of 2⁻⁵³ in [0 . . 1)                         | 1                           |
-| `pekkizen`    | [Pekka Pulkkinen's uniFloats](https://github.com/pekkizen/prng/wiki/uniFloats) (`Float64_64`)  | uniform real rounded **down** to a 2⁻⁶⁴ grid     | every float in [2⁻¹² . . 1); 2⁵² values spaced 2⁻⁶⁴ below 2⁻¹² | 1                           |
-| `pekkizen`    | [Pekka Pulkkinen's uniFloats](https://github.com/pekkizen/prng/wiki/uniFloats) (`Float64_117`) | uniform real rounded **down** to a 2⁻¹¹⁷ grid    | every float in [2⁻⁶⁵ . . 1); multiples of 2⁻¹¹⁷ below 2⁻⁶⁵     | 1 + ≈2⁻¹²                   |
-| `pekkizen`    | [Pekka Pulkkinen's uniFloats](https://github.com/pekkizen/prng/wiki/uniFloats) (`Float64full`) | uniform real in [0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                   |
-| `campbell`    | Taylor R. Campbell's `binary64fast.c`                                                          | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹²⁸ . . 1]                                   | 2 (or 3, for constant time) |
-| `campbell`    | Taylor R. Campbell's [`random_real.c`](https://mumble.net/~campbell/2014/04/28/random_real.c)  | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹⁰²⁴ . . 1], and 0                           | ≈1.5                        |
-| `badizadegan` | [fp-rand](https://github.com/specbranch/fp-rand/) (round-down variant)                         | uniform real in (0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                   |
+| [`standard`]    | folklore                                                                                       | equispaced                                       | the 2⁵³ multiples of 2⁻⁵³ in [0 . . 1)                         | 1                           |
+| [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64_64`)  | uniform real rounded **down** to a 2⁻⁶⁴ grid     | every float in [2⁻¹² . . 1); 2⁵² values spaced 2⁻⁶⁴ below 2⁻¹² | 1                           |
+| [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64_117`) | uniform real rounded **down** to a 2⁻¹¹⁷ grid    | every float in [2⁻⁶⁵ . . 1); multiples of 2⁻¹¹⁷ below 2⁻⁶⁵     | 1 + ≈2⁻¹²                   |
+| [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64full`) | uniform real in [0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                   |
+| [`campbell`]    | Taylor R. Campbell's `binary64fast.c`                                                          | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹²⁸ . . 1]                                   | 2 (or 3, for constant time) |
+| [`campbell`]    | Taylor R. Campbell's [`random_real.c`]  | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹⁰²⁴ . . 1], and 0                           | ≈1.5                        |
+| [`badizadegan`] | [fp-rand] (round-down variant)                         | uniform real in (0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                   |
 
 A few observations:
 
@@ -42,14 +72,14 @@ A few observations:
 - Campbell's constant-time code is geared towards shielding from timing
   side-channel attacks, which is a non-goal for us.
 
-- The documentation of `campbell::real` differs from the comments in
+- The documentation of [`campbell::real`] differs from the comments in
   Campbell's `random_real.c`: while porting it we found a minor bug (the
   all-zeros cutoff fires one 64-bit word too early, so the subnormals below
   2⁻¹⁰²⁴ are unreachable and 0 is returned slightly too often), which we
   reported to the author. The code is a faithful port; our documentation
   describes what the code actually does.
 
-## Examples
+## Using specific techniques
 
 ```rust
 use rand_float::{badizadegan, campbell, pekkizen, standard};
@@ -75,7 +105,7 @@ let d = badizadegan::f64_down(|| src.next_u64());
 
 ## Benchmarks
 
-`cargo bench` drives every technique with the same Weyl-sequence source in two
+`cargo bench` drives every technique with the same [`Weyl`]-sequence source in two
 settings: one conversion per call, and filling an array of 1024 doubles per
 iteration.
 All builds use `-C target-cpu=native` (set in `.cargo/config.toml`), so the
@@ -104,8 +134,8 @@ python/plot_bench.py bench.txt -o bench.pdf`.
 ## Results
 
 Here we display the results of the benchmarks on some architectures. Note that
-because of a quirk in LLVM, we had to add (at least for the time being) a [cold
-barrier](https://docs.rs/rand-float/latest/rand_float/cold/) preventing some
+because of a quirk in LLVM, we had to add (at least for the time being)
+a [cold barrier] preventing some
 un-optimization of the array case due to interference with the underlying Weyl
 generator. The barrier sometimes however disturbs a bit the single-call case. We
 hope to remove it in the future.
@@ -142,8 +172,26 @@ ported techniques retain the licenses of their authors, reproduced in the
 header of the respective source files:
 
 - `src/badizadegan.rs` — MIT, Copyright (c) 2025 Nima Badizadegan
-  ([fp-rand](https://github.com/specbranch/fp-rand/));
+  ([fp-rand]);
 - `src/campbell.rs` — BSD-2-Clause, Copyright (c) 2014-2026 Taylor R. Campbell
   (from `binary64fast.c` and `random_real.c`);
 - `src/pekkizen.rs` — Copyright (c) 2020 Pekka Pulkkinen, distribution permitted
-  ([uniFloats](https://github.com/pekkizen/prng/wiki/uniFloats));
+  ([uniFloats]);
+
+[`uniform`]: https://docs.rs/rand-float/latest/rand_float/uniform/
+[`unif_01`]: https://docs.rs/rand-float/latest/rand_float/uniform/fn.unif_01.html
+[method]: https://docs.rs/rand-float/latest/rand_float/uniform/trait.Unif01Ext.html#tymethod.unif_01
+[`Unif01Ext`]: https://docs.rs/rand-float/latest/rand_float/uniform/trait.Unif01Ext.html
+[`standard`]: https://docs.rs/rand-float/latest/rand_float/standard/
+[`pekkizen`]: https://docs.rs/rand-float/latest/rand_float/pekkizen/
+[`campbell`]: https://docs.rs/rand-float/latest/rand_float/campbell/
+[`campbell::real`]: https://docs.rs/rand-float/latest/rand_float/campbell/fn.real.html
+[`badizadegan`]: https://docs.rs/rand-float/latest/rand_float/badizadegan/
+[`Weyl`]: https://docs.rs/rand-float/latest/rand_float/sources/struct.Weyl.html
+[`rand`]: https://crates.io/crates/rand
+[relatively innocuous pull request]: https://github.com/smol-rs/fastrand/pull/129
+[Pekka Pulkkinen's uniFloats]: https://github.com/pekkizen/prng/wiki/uniFloats
+[`random_real.c`]: https://mumble.net/~campbell/2014/04/28/random_real.c
+[fp-rand]: https://github.com/specbranch/fp-rand/
+[uniFloats]: https://github.com/pekkizen/prng/wiki/uniFloats
+[cold barrier]: https://docs.rs/rand-float/latest/rand_float/cold/

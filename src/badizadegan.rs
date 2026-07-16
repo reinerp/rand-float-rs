@@ -26,8 +26,8 @@
 
 //! Nima Badizadegan's “perfect” conversion.
 //!
-//! A Rust port of the round-down variant of [Nima Badizadegan's
-//! algorithm](https://github.com/specbranch/fp-rand/).
+//! A Rust port of the round-down variant of
+//! [Nima Badizadegan's algorithm].
 //!
 //! The functions in this module return a value distributed exactly as if a real
 //! number had been drawn uniformly from (0 . . 1) and then rounded down (toward
@@ -43,6 +43,8 @@
 //! let y = rand_float::badizadegan::f32_down(|| src.next_u64());
 //! assert!((0.0..1.0).contains(&y));
 //! ```
+//!
+//! [Nima Badizadegan's algorithm]: https://github.com/specbranch/fp-rand/
 
 /// Number of explicit mantissa bits of an IEEE 754 binary64.
 const F64_MBITS: u32 = 52;
@@ -56,10 +58,12 @@ const F32_EBIAS: u32 = 127;
 
 /// A buffer of random bits drawn from a 64-bit entropy source.
 ///
-/// [`get_bits`](Self::get_bits) hands out `n` bits at a time, drawing a new
-/// 64-bit word from the source only when the buffered bits run out; the
-/// remainder of each draw is kept for subsequent requests. A pool lives for
-/// a single top-level generation call.
+/// [`get_bits`] hands out `n` bits at a time, drawing a new 64-bit word
+/// from the source only when the buffered bits run out; the remainder of
+/// each draw is kept for subsequent requests. A pool lives for a single
+/// top-level generation call.
+///
+/// [`get_bits`]: Self::get_bits
 struct EntropyPool<F> {
     src: F,
     pool: u64,
@@ -169,8 +173,8 @@ fn seek32<F: FnMut() -> u64>(pool: &mut EntropyPool<F>) -> (u32, u32) {
 ///
 /// The result lies in [0 . . 1); every `f64` in that range, including every
 /// subnormal and 0, is returned with probability equal to the measure of
-/// the reals that round down to it. See the [module documentation](self)
-/// for the algorithm.
+/// the reals that round down to it. See the [module documentation] for
+/// the algorithm.
 ///
 /// `bits` must return independent uniform random 64-bit words. Exactly one
 /// word is consumed with probability ≈ 1 − 2⁻¹²; the expected number of
@@ -187,6 +191,8 @@ fn seek32<F: FnMut() -> u64>(pool: &mut EntropyPool<F>) -> (u32, u32) {
 /// let y = rand_float::badizadegan::f64_down(&mut next);
 /// assert!(x != y);
 /// ```
+///
+/// [module documentation]: self
 #[inline]
 pub fn f64_down(bits: impl FnMut() -> u64) -> f64 {
     let mut pool = EntropyPool::new(bits);

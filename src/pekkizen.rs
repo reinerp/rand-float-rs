@@ -10,9 +10,8 @@
 
 //! Pekka Pulkkinen’s leading-zeros technique.
 //!
-//! A Rust port of `Float64_64`, `Float64_117` and `Float64full` from [Pekka
-//! Pulkkinen’s uniFloats
-//! wiki](https://github.com/pekkizen/prng/wiki/uniFloats). One 64-bit word is
+//! A Rust port of `Float64_64`, `Float64_117` and `Float64full` from
+//! [Pekka Pulkkinen’s uniFloats wiki]. One 64-bit word is
 //! interpreted as a uniform fixed-point real in [0 . . 1): the count of leading
 //! zeros picks the binade (a geometric distribution), and the remaining bits
 //! are shifted into the mantissa.
@@ -29,7 +28,10 @@
 //!
 //! All variants consume one word per call with probability 1 − 2⁻¹² and, in
 //! the typical case, cost only a couple of operations more than
-//! [`standard`](crate::standard) scaling.
+//! [`standard`] scaling.
+//!
+//! [Pekka Pulkkinen’s uniFloats wiki]: https://github.com/pekkizen/prng/wiki/uniFloats
+//! [`standard`]: crate::standard
 
 /// Returns a random `f64` distributed as a uniform 64-bit fixed-point real
 /// in [0 . . 1) rounded down to the nearest representable value: every float
