@@ -5,5 +5,6 @@ pub mod campbell;
 pub mod cold;
 pub mod division;
 pub mod pekkizen;
+pub mod reinerp;
 pub mod sources;
 pub mod uniform;

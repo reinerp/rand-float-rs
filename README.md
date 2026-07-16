@@ -81,15 +81,16 @@ Anthropic's Fable and extensively checked against the original implementation.
 In the process, we isolated a few bugs in the original code, that have been
 reported to the authors.
 
-| Module          | Origin                                        | Distribution                                     | Reachable values                                               | Words per `f64`             |
-| --------------- | --------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- | --------------------------- |
-| [`division`]    | folklore                                      | equispaced                                       | the 2⁵³ multiples of 2⁻⁵³ in [0 . . 1)                         | 1                           |
-| [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64_64`)  | uniform real rounded **down** to a 2⁻⁶⁴ grid     | every float in [2⁻¹² . . 1); 2⁵² values spaced 2⁻⁶⁴ below 2⁻¹² | 1                           |
-| [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64_117`) | uniform real rounded **down** to a 2⁻¹¹⁷ grid    | every float in [2⁻⁶⁵ . . 1); multiples of 2⁻¹¹⁷ below 2⁻⁶⁵     | 1 + ≈2⁻¹²                   |
-| [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64full`) | uniform real in [0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                   |
-| [`campbell`]    | Taylor R. Campbell's `binary64fast.c`         | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹²⁸ . . 1]                                   | 2 (or 3, for constant time) |
-| [`campbell`]    | Taylor R. Campbell's [`random_real.c`]        | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹⁰²⁴ . . 1], and 0                           | ≈1.5                        |
-| [`badizadegan`] | [fp-rand] (round-down variant)                | uniform real in (0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                   |
+| Module          | Origin                                        | Distribution                                     | Reachable values                                               | Words per `f64`                      |
+| --------------- | --------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- | ------------------------------------ |
+| [`division`]    | folklore                                      | equispaced                                       | the 2⁵³ multiples of 2⁻⁵³ in [0 . . 1)                         | 1                                    |
+| [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64_64`)  | uniform real rounded **down** to a 2⁻⁶⁴ grid     | every float in [2⁻¹² . . 1); 2⁵² values spaced 2⁻⁶⁴ below 2⁻¹² | 1                                    |
+| [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64_117`) | uniform real rounded **down** to a 2⁻¹¹⁷ grid    | every float in [2⁻⁶⁵ . . 1); multiples of 2⁻¹¹⁷ below 2⁻⁶⁵     | 1 + ≈2⁻¹²                            |
+| [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64full`) | uniform real in [0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                            |
+| [`reinerp`]     | [fastrand discussion]                         | uniform real in [0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹¹ (x86), 1 + ≈2⁻¹² (AArch64) |
+| [`campbell`]    | Taylor R. Campbell's `binary64fast.c`         | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹²⁸ . . 1]                                   | 2 (or 3, for constant time)          |
+| [`campbell`]    | Taylor R. Campbell's [`random_real.c`]        | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹⁰²⁴ . . 1], and 0                           | ≈1.5                                 |
+| [`badizadegan`] | [fp-rand] (round-down variant)                | uniform real in (0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                            |
 
 A few observations:
 
@@ -117,7 +118,7 @@ A few observations:
 ## Using specific techniques
 
 ```rust
-use rand_float::{badizadegan, campbell, division, pekkizen};
+use rand_float::{badizadegan, campbell, division, pekkizen, reinerp};
 
 struct Xoroshiro128pp([u64; 2]);
 
@@ -136,6 +137,7 @@ let a = division::f64_53bits(|| src.next_u64());
 let b = pekkizen::f64_64(|| src.next_u64());
 let c = campbell::fast(|| src.next_u64());
 let d = badizadegan::f64_down(|| src.next_u64());
+let e = reinerp::f64_round_down(|| src.next_u64());
 ```
 
 ## Benchmarks
@@ -174,6 +176,54 @@ a [cold barrier] preventing some
 un-optimization of the array case due to interference with the underlying Weyl
 generator. The barrier sometimes however disturbs a bit the single-call case. We
 hope to remove it in the future.
+
+### Apple M5
+
+| Method                     | `per_call` | `fill_1024` | `sum_1024` |
+| -------------------------- | ---------: | ----------: | ---------: |
+| `weyl_baseline`            |  234.74 ps |   65.963 ns |  122.73 ns |
+| `division_53bits`          |  303.64 ps |   135.39 ns |  211.73 ns |
+| `pekkizen_64`              |  358.97 ps |   358.08 ns |  292.44 ns |
+| `pekkizen_117`             |  376.73 ps |   418.62 ns |  374.87 ns |
+| `pekkizen_full`            |  388.50 ps |   434.44 ns |  406.91 ns |
+| `reinerp_down`             |  323.33 ps |   356.35 ns |  319.74 ns |
+| `badizadegan_down`         |  726.79 ps |   756.39 ns |  647.43 ns |
+| `campbell_fast`            |  490.01 ps |   626.23 ns |  598.19 ns |
+| `campbell_real`            |  639.80 ps |   1.1068 µs |  1.1502 µs |
+| `campbell_consttime_cmove` |  593.36 ps |   771.62 ns |  826.83 ns |
+| `campbell_consttime`       |  924.19 ps |   1.1265 µs |  1.1680 µs |
+
+### AMD EPYC 9B14, AVX512 disabled
+
+| Method                     |  per_call | fill_1024 |  sum_1024 |
+| -------------------------- | --------: | --------: | --------: |
+| `weyl_baseline`            | 586.82 ps | 95.429 ns | 188.67 ns |
+| `division_53bits`          | 588.16 ps | 614.25 ns | 669.61 ns |
+| `pekkizen_64`              | 882.41 ps | 755.99 ns | 757.17 ns |
+| `pekkizen_117`             | 1.1766 ns | 1.2104 µs | 893.46 ns |
+| `pekkizen_full`            | 1.2056 ns | 1.1431 µs | 980.23 ns |
+| `reinerp_down`             | 882.80 ps | 910.91 ns | 652.16 ns |
+| `badizadegan_down`         | 1.7630 ns | 1.8128 µs | 1.7430 µs |
+| `campbell_fast`            | 1.9839 ns | 2.7470 µs | 2.3657 µs |
+| `campbell_real`            | 1.7466 ns | 1.6081 µs | 1.6561 µs |
+| `campbell_consttime_cmove` | 2.2687 ns | 1.4497 µs | 2.5704 µs |
+| `campbell_consttime`       | 3.0475 ns | 2.1009 µs | 3.0909 µs |
+
+### AMD EPYC 9B14, AVX512 enabled
+
+| Method                     |  per_call | fill_1024 |  sum_1024 |
+| -------------------------- | --------: | --------: | --------: |
+| `weyl_baseline`            | 587.60 ps | 95.462 ns | 177.41 ns |
+| `division_53bits`          | 587.55 ps | 98.763 ns | 211.78 ns |
+| `pekkizen_64`              | 777.49 ps | 214.60 ns | 723.84 ns |
+| `pekkizen_117`             | 1.3223 ns | 910.30 ns | 938.14 ns |
+| `pekkizen_full`            | 1.0298 ns | 1.2220 µs | 997.83 ns |
+| `reinerp_down`             | 588.95 ps | 619.97 ns | 559.89 ns |
+| `badizadegan_down`         | 1.6173 ns | 1.5154 µs | 1.6636 µs |
+| `campbell_fast`            | 1.7630 ns | 1.8526 µs | 1.9117 µs |
+| `campbell_real`            | 1.5568 ns | 1.6129 µs | 1.5045 µs |
+| `campbell_consttime_cmove` | 2.0603 ns | 642.76 ns | 1.3680 µs |
+| `campbell_consttime`       | 2.9375 ns | 954.31 ns | 1.8636 µs |
 
 ### AMD Ryzen 9 5950X
 
@@ -219,6 +269,7 @@ header of the respective source files:
 [`Unif01Ext`]: https://docs.rs/rand-float/latest/rand_float/uniform/trait.Unif01Ext.html
 [`division`]: https://docs.rs/rand-float/latest/rand_float/division/
 [`pekkizen`]: https://docs.rs/rand-float/latest/rand_float/pekkizen/
+[`reinerp`]: https://docs.rs/rand-float/latest/rand_float/reinerp/
 [`campbell`]: https://docs.rs/rand-float/latest/rand_float/campbell/
 [`campbell::real`]: https://docs.rs/rand-float/latest/rand_float/campbell/fn.real.html
 [`badizadegan`]: https://docs.rs/rand-float/latest/rand_float/badizadegan/
@@ -231,3 +282,4 @@ header of the respective source files:
 [uniFloats]: https://github.com/pekkizen/prng/wiki/uniFloats
 [cold barrier]: https://docs.rs/rand-float/latest/rand_float/cold/
 [differential privacy]: https://doi.org/10.1145/2382196.2382264
+[fastrand discussion]: https://github.com/smol-rs/fastrand/pull/129#issuecomment-4827111778

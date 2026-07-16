@@ -118,7 +118,7 @@ fn tail_draws(draws: u64, convert: impl Fn(&mut Mwc192) -> f64 + Sync) -> Vec<u6
                             local.push(u.to_bits());
                         }
                     }
-                    if (b + 1) % 100 == 0 {
+                    if (b + 1).is_multiple_of(100) {
                         eprintln!("  ...block {}/{blocks}", b + 1);
                     }
                 }

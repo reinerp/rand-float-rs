@@ -12,7 +12,7 @@
 use criterion::{
     BenchmarkGroup, Criterion, Throughput, criterion_group, criterion_main, measurement::WallTime,
 };
-use rand_float::{badizadegan, campbell, division, pekkizen, sources::Weyl};
+use rand_float::{badizadegan, campbell, division, pekkizen, reinerp, sources::Weyl};
 
 const SEED: u64 = 0x0123_4567_89AB_CDEF;
 const FILL: usize = 1024;
@@ -88,6 +88,9 @@ macro_rules! bench_all {
         $one($g, "pekkizen_64", |r| pekkizen::f64_64(|| r.next_u64()));
         $one($g, "pekkizen_117", |r| pekkizen::f64_117(|| r.next_u64()));
         $one($g, "pekkizen_full", |r| pekkizen::f64_full(|| r.next_u64()));
+        $one($g, "reinerp_down", |r| {
+            reinerp::f64_round_down(|| r.next_u64())
+        });
         $one($g, "badizadegan_down", |r| {
             badizadegan::f64_down(|| r.next_u64())
         });
