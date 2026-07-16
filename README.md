@@ -51,15 +51,15 @@ Anthropic's Fable and extensively checked against the original implementation.
 In the process, we isolated a few bugs in the original code, that have been
 reported to the authors.
 
-| Module        | Origin                                                                                         | Distribution                                     | Reachable values                                               | Words per `f64`             |
-| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- | --------------------------- |
-| [`standard`]    | folklore                                                                                       | equispaced                                       | the 2⁵³ multiples of 2⁻⁵³ in [0 . . 1)                         | 1                           |
+| Module          | Origin                                        | Distribution                                     | Reachable values                                               | Words per `f64`             |
+| --------------- | --------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- | --------------------------- |
+| [`standard`]    | folklore                                      | equispaced                                       | the 2⁵³ multiples of 2⁻⁵³ in [0 . . 1)                         | 1                           |
 | [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64_64`)  | uniform real rounded **down** to a 2⁻⁶⁴ grid     | every float in [2⁻¹² . . 1); 2⁵² values spaced 2⁻⁶⁴ below 2⁻¹² | 1                           |
 | [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64_117`) | uniform real rounded **down** to a 2⁻¹¹⁷ grid    | every float in [2⁻⁶⁵ . . 1); multiples of 2⁻¹¹⁷ below 2⁻⁶⁵     | 1 + ≈2⁻¹²                   |
 | [`pekkizen`]    | [Pekka Pulkkinen's uniFloats] (`Float64full`) | uniform real in [0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                   |
-| [`campbell`]    | Taylor R. Campbell's `binary64fast.c`                                                          | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹²⁸ . . 1]                                   | 2 (or 3, for constant time) |
-| [`campbell`]    | Taylor R. Campbell's [`random_real.c`]  | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹⁰²⁴ . . 1], and 0                           | ≈1.5                        |
-| [`badizadegan`] | [fp-rand] (round-down variant)                         | uniform real in (0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                   |
+| [`campbell`]    | Taylor R. Campbell's `binary64fast.c`         | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹²⁸ . . 1]                                   | 2 (or 3, for constant time) |
+| [`campbell`]    | Taylor R. Campbell's [`random_real.c`]        | uniform real in [0 . . 1] rounded **to nearest** | every float in [2⁻¹⁰²⁴ . . 1], and 0                           | ≈1.5                        |
+| [`badizadegan`] | [fp-rand] (round-down variant)                | uniform real in (0 . . 1) rounded **down**       | every float in [0 . . 1), including all subnormals             | 1 + ≈2⁻¹²                   |
 
 A few observations:
 
@@ -78,6 +78,11 @@ A few observations:
   2⁻¹⁰²⁴ are unreachable and 0 is returned slightly too often), which we
   reported to the author. The code is a faithful port; our documentation
   describes what the code actually does.
+
+- Badizadegan's technique is almost optimal in terms of entropy, a property
+  shared by none of the other techniques. To use this property, however, one
+  should keep track of the used bits in each 64-bit output, making the stateless
+  approach of this crate impossible.
 
 ## Using specific techniques
 

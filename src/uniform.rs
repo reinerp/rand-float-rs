@@ -65,7 +65,7 @@ pub trait Unif01Ext {
 
 #[cfg(feature = "rand")]
 impl<R: rand_core::Rng + ?Sized> Unif01Ext for R {
-    #[inline]
+    #[inline(always)]
     fn unif_01(&mut self) -> f64 {
         f64_full(|| self.next_u64())
     }
