@@ -1,6 +1,6 @@
 [package]
 name = "rand-float"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 description = "Techniques for converting streams of random bits into floating-point numbers distributed as a uniform real in the unit interval"
 license = "(Apache-2.0 OR MIT) AND BSD-2-Clause AND MIT"

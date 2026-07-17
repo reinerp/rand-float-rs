@@ -50,20 +50,22 @@ inversion:
 1.2e12 draws per converter on 10 threads, seed 42
 
 x/2^53 + zero guard:
-  286733 deviates beyond -5.035σ in 118 s; 17 bit-identical duplicates
+  [...]
+  286733 deviates beyond -5.035σ in 118 s; 17 duplicates
     -5.7127σ drawn 2 times
     -5.3617σ drawn 2 times
     -5.3529σ drawn 2 times
+    ...
 unif_01:
-  286748 deviates beyond -5.035σ in 246 s; 0 bit-identical duplicates
+  [...]
+  286748 deviates beyond -5.035σ in 246 s; 0 duplicates
 ```
 
-The detected collisions are statistically impossible: their presence is
-only due to the fact that the division technique quantizes the tail of
-the Gaussian distribution — below 2⁻²² it can return just 2³¹ distinct
-values, all multiples of 2⁻⁵³. For the same reason it cuts off the tail
-arbitrarily, as it never returns nonzero numbers closer to zero than
-2⁻⁵³.
+The detected collisions are statistically impossible: their presence is only due
+to the fact that the division technique quantizes the tail of the Gaussian
+distribution, as below 2⁻²² it can return just 2³¹ distinct values, all
+multiples of 2⁻⁵³. For the same reason it cuts off the tail arbitrarily, as it
+never returns nonzero numbers closer to zero than 2⁻⁵³.
 
 Every technique is implemented as a pure transformation of a source of
 uniform random 64-bit words (any `FnMut() -> u64`), documented with its

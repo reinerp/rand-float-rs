@@ -4,7 +4,8 @@
 //! counts the duplicate values in the tail. Such duplicates are statistically
 //! impossible in theory, and also in practice when the whole range of
 //! floating-point numbers is available, but they are generated easily
-//! if one uses division instead of the techniques described in this crate.
+//! if one uses division instead of the other techniques described in
+//! this crate.
 //!
 //! Run with `cargo run --release --example gaussian_tail`; an optional argument
 //! overrides the number of draws per converter (e.g. `1e10` for a quick,
@@ -141,7 +142,11 @@ fn report(hits: &[u64], seconds: f64) -> usize {
     );
     let mut shown = 0;
     for run in hits.chunk_by(|a, b| a == b) {
-        if run.len() > 1 && shown < 3 {
+        if run.len() > 1 {
+            if shown == 3 {
+                println!("    ...");
+                break;
+            }
             let u = f64::from_bits(run[0]);
             println!("    {:+.4}σ drawn {} times", probit_tail(u), run.len());
             shown += 1;
