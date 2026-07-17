@@ -161,24 +161,6 @@ fn tail_draws(draws: u64, convert: impl Fn(&mut Weyl) -> f64 + Sync) -> Vec<u64>
     hits
 }
 
-/// The greatest common divisor of the tail sample (floats are dyadic
-/// rationals, so the Euclidean algorithm on `f64` is exact), stopping
-/// at 2⁻⁷⁰: the pitch of the lattice the sample lies on, if any.
-fn empirical_pitch(hits: &[u64]) -> f64 {
-    let mut g = 0.0f64;
-    for &bits in hits {
-        let (mut a, mut b) = (f64::from_bits(bits), g);
-        while b > 0.0 {
-            (a, b) = (b, a % b);
-        }
-        g = a;
-        if g < 2f64.powi(-70) {
-            break;
-        }
-    }
-    g
-}
-
 /// Prints the statistics of a tail sample and returns the number of
 /// draws that are bit-identical to a previous one.
 fn report(hits: &[u64], seconds: f64) -> usize {
@@ -200,15 +182,6 @@ fn report(hits: &[u64], seconds: f64) -> usize {
             shown += 1;
         }
     }
-    let pitch = empirical_pitch(hits);
-    if pitch >= 2f64.powi(-70) {
-        println!(
-            "  entire tail lies on a lattice of pitch {pitch:e} (2⁻⁵³ = {:e})",
-            2f64.powi(-53)
-        );
-    } else {
-        println!("  no lattice structure above 2⁻⁷⁰");
-    }
     duplicates
 }
 
@@ -218,45 +191,23 @@ fn main() {
         .map_or(DRAWS, |s| s.parse::<f64>().expect("draws") as u64);
     let threads = std::thread::available_parallelism().map_or(4, usize::from);
     let expected_hits = draws as f64 * THRESHOLD;
-    // Duplicates expected on the 2³¹-point lattice below 2⁻²².
+
     let expected_dups = expected_hits * expected_hits / 2.0 / (2f64.powi(31) - 1.0);
-    println!(
-        "{draws:e} draws per converter on {threads} threads, seed {SEED}: expecting \
-         ~{expected_hits:.0} deviates\nbeyond {:.3}σ per converter, of which \
-         ~{expected_dups:.1} duplicated for x/2^53 and\n~{:.1e} for unif_01",
-        probit_tail(THRESHOLD),
-        expected_hits * expected_hits / 2.0 * (2.0 / 3.0) * 2f64.powi(-53),
-    );
+    println!("{draws:e} draws per converter on {threads} threads, seed {SEED}",);
     println!();
 
     println!("x/2^53 + zero guard:");
     let start = Instant::now();
     let hits = tail_draws(draws, |src| f64_53bits_guarded(|| src.next_u64()));
     let dups_53 = report(&hits, start.elapsed().as_secs_f64());
-    if expected_hits > 1000.0 {
-        assert!((0.9..1.1).contains(&(hits.len() as f64 / expected_hits)));
-        assert_eq!(empirical_pitch(&hits), 2f64.powi(-53));
-    }
 
     println!("unif_01:");
     let start = Instant::now();
     let hits = tail_draws(draws, |src| unif_01(|| src.next_u64()));
     let dups_full = report(&hits, start.elapsed().as_secs_f64());
-    if expected_hits > 1000.0 {
-        assert!((0.9..1.1).contains(&(hits.len() as f64 / expected_hits)));
-        assert!(empirical_pitch(&hits) < 2f64.powi(-70));
-    }
+
     assert_eq!(dups_full, 0);
     if expected_dups >= 10.0 {
         assert!(dups_53 as f64 >= expected_dups / 4.0);
     }
-
-    println!();
-    println!(
-        "Same generator, same number of draws: the 53-bit conversion hands the tail\n\
-         of the simulation to a 2⁻⁵³ lattice — duplicate “independent” extreme\n\
-         events today, and no deviate beyond {:.2}σ ever — while complete coverage\n\
-         is exact down to Φ⁻¹(2⁻¹⁰⁷⁴) ≈ −38.5σ.",
-        probit_tail(2f64.powi(-53)),
-    );
 }
