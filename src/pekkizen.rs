@@ -42,11 +42,13 @@ pub fn f64_64(mut bits: impl FnMut() -> u64) -> f64 {
     if u == 0 {
         return 0.0;
     }
-    let z = u.leading_zeros() as u64 + 1;
-    // The Go original computes `u << z` with z possibly 64, which Go defines
-    // as 0; Rust declares 64-bit shifts overflow, so the shift is split as
-    // `(u << (z - 1)) << 1` (z ≥ 1 always).
-    f64::from_bits((1023 - z) << 52 | ((u << (z - 1)) << 1) >> 12)
+    let z = u.leading_zeros() as u64;
+    // The Go original defines z as the leading-zeros count plus one and
+    // computes `u << z` with z possibly 64, which Go defines as 0; Rust
+    // declares 64-bit shifts overflow, so here z is the plain leading-zeros
+    // count (≤ 63, as u ≠ 0) and the last bit of the shift, which drops the
+    // implicit leading one, is applied separately.
+    f64::from_bits((1022 - z) << 52 | ((u << z) << 1) >> 12)
 }
 
 /// Returns 2⁻ⁿ as an `f64`; `n` must be at most 1022.
@@ -66,14 +68,13 @@ const fn two_to_minus(n: u64) -> f64 {
 #[inline]
 pub fn f64_117(mut bits: impl FnMut() -> u64) -> f64 {
     let u = bits();
-    let z = u.leading_zeros() as u64 + 1;
-    if z <= 12 {
-        // 99.975% of cases.
-        return f64::from_bits((1023 - z) << 52 | ((u << (z - 1)) << 1) >> 12);
+    let z = u.leading_zeros() as u64;
+    if z <= 11 {
+        // 99.975% of cases; see [`f64_64`] for the shift structure.
+        return f64::from_bits((1022 - z) << 52 | ((u << z) << 1) >> 12);
     }
     // Kluge; see [`crate::cold::cold_barrier`].
     crate::cold::cold_barrier();
-    let z = z - 1;
     // The Go original computes `u << z` with z possibly 64 (first word 0),
     // which Go defines as 0; `checked_shl` + `unwrap_or` mirrors that
     // (as would `unbounded_shl`, which however requires Rust 1.87).
@@ -91,14 +92,13 @@ pub fn f64_117(mut bits: impl FnMut() -> u64) -> f64 {
 #[inline]
 pub fn f64_full(mut bits: impl FnMut() -> u64) -> f64 {
     let mut u = bits();
-    let mut z = u.leading_zeros() as u64 + 1;
-    if z <= 12 {
-        // 99.975% of cases.
-        return f64::from_bits((1023 - z) << 52 | ((u << (z - 1)) << 1) >> 12);
+    let mut z = u.leading_zeros() as u64;
+    if z <= 11 {
+        // 99.975% of cases; see [`f64_64`] for the shift structure.
+        return f64::from_bits((1022 - z) << 52 | ((u << z) << 1) >> 12);
     }
     // Kluge; see [`crate::cold::cold_barrier`].
     crate::cold::cold_barrier();
-    z -= 1;
     let mut exp = 0u64;
     while u == 0 {
         u = bits();

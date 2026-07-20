@@ -1,5 +1,10 @@
 # Change Log
 
+## unreleased
+
+- Following a suggestion in a pull request by Reiner Pope, the code for
+  pekkizen has been slightly simplified.
+
 ## [0.2.0] - 2026-07-17
 
 ### Changed
